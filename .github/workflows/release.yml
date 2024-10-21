@@ -5,18 +5,79 @@ on:
     types: [created]
 
 jobs:
-  release:
-    name: release ${{ matrix.target }}
-    runs-on: ubuntu-latest
+  build:
+    name: Publishing for ${{ matrix.job.os }}
+    runs-on: ${{ matrix.job.os }}
     strategy:
-      fail-fast: false
       matrix:
-        target: [x86_64-unknown-linux-musl]
+        job:
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            use-cross: false
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            use-cross: false
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            use-cross: false
+          - os: ubuntu-20.04
+            target: x86_64-unknown-linux-gnu
+            use-cross: false
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            use-cross: true
+          - os: ubuntu-20.04
+            target: i686-unknown-linux-gnu
+            use-cross: true
+          - os: ubuntu-20.04
+            target: arm-unknown-linux-gnueabihf
+            use-cross: true
+          - os: ubuntu-20.04
+            target: aarch64-unknown-linux-gnu
+            use-cross: true
     steps:
-      - uses: actions/checkout@master
-      - name: Compile and release
-        uses: rust-build/rust-build.action@latest
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Read rust-toolchain
+        shell: bash
+        id: rust-toolchain
+        run: echo "TOOLCHAIN_VERSION=$(cat rust-toolchain)" >> $GITHUB_ENV
+      - name: Remove rust-toolchain
+        shell: bash
+        run: rm rust-toolchain
+      - name: Installing Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.TOOLCHAIN_VERSION }}
+          targets: ${{ matrix.job.target }}
+      - name: Install cross
+        if: matrix.job.use-cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+      - name: Cargo build
+        env:
+          MACOSX_DEPLOYMENT_TARGET: 10.7
+        shell: bash
+        run: |
+          if [[ "${{ matrix.job.use-cross }}" == "true" ]]; then
+            cross build --release --target ${{ matrix.job.target }}
+          else
+            cargo build --release --target ${{ matrix.job.target }}
+          fi
+      - name: Rename binery and Archive
+        shell: bash
+        run: |
+          mv target/${{ matrix.job.target }}/release/isuconf ./isuconf-${{ matrix.job.target }}
+          tar -czf isuconf-${{ matrix.job.target }}.tar.gz isuconf-${{ matrix.job.target }}
+          zip isuconf-${{ matrix.job.target }}.zip isuconf-${{ matrix.job.target }}
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RUSTTARGET: ${{ matrix.target }}
-          EXTRA_FILES: "README.md LICENSE"
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            ./isuconf-${{ matrix.job.target }}.tar.gz
+            ./isuconf-${{ matrix.job.target }}.zip
