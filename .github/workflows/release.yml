@@ -68,10 +68,15 @@ jobs:
       - name: Rename binery and Archive
         shell: bash
         run: |
-          mv target/${{ matrix.job.target }}/release/isuconf ./isuconf-${{ matrix.job.target }}
-          tar -czf isuconf-${{ matrix.job.target }}.tar.gz isuconf-${{ matrix.job.target }}
-          zip isuconf-${{ matrix.job.target }}.zip isuconf-${{ matrix.job.target }}
-
+          if [[ "${{ matrix.job.os }}" == "windows-latest" ]]; then
+            mv target/${{ matrix.job.target }}/release/isuconf ./isuconf-${{ matrix.job.target }}.exe
+            tar -czf isuconf-${{ matrix.job.target }}.tar.gz isuconf-${{ matrix.job.target }}.exe
+            7z a isuconf-${{ matrix.job.target }}.zip isuconf-${{ matrix.job.target }}.exe
+          else
+            mv target/${{ matrix.job.target }}/release/isuconf ./isuconf-${{ matrix.job.target }}
+            tar -czf isuconf-${{ matrix.job.target }}.tar.gz isuconf-${{ matrix.job.target }}
+            zip isuconf-${{ matrix.job.target }}.zip isuconf-${{ matrix.job.target }}
+          fi
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         env:
