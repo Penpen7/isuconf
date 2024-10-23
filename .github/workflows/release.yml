@@ -75,7 +75,7 @@ jobs:
           else
             mv target/${{ matrix.job.target }}/release/isuconf ./isuconf-${{ matrix.job.target }}
             tar -czf isuconf-${{ matrix.job.target }}.tar.gz isuconf-${{ matrix.job.target }} LICENSE README.md
-            zip isuconf-${{ matrix.job.target }}.zip isuconf-${{ matrix.job.target }} 
+            zip isuconf-${{ matrix.job.target }}.zip isuconf-${{ matrix.job.target }} LICENSE README.md
           fi
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
