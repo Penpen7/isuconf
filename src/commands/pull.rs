@@ -1,5 +1,5 @@
 use crate::client::{convert_to_string, is_target_config, LocalConfigClient, RemoteConfigClient};
-use crate::config::{read_config, TargetConfig};
+use crate::config::{read_config, ServerConfig, TargetConfig};
 use anyhow::Result;
 use colored::Colorize;
 use futures::StreamExt;
@@ -21,6 +21,9 @@ pub struct PullOpt {
     // Target config
     #[structopt(name = "TARGET_CONFIG_PATH")]
     pub target_config_path: Option<String>,
+    // Target server names
+    #[structopt(short, long)]
+    pub server_names: Option<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -247,6 +250,17 @@ pub async fn pull(opt: PullOpt) -> Result<()> {
 
     let mut tasks = vec![];
 
+    let servers: Vec<&ServerConfig> =
+        opt.server_names
+            .map_or(config.remote.servers.iter().collect(), |opt_servers| {
+                config
+                    .remote
+                    .servers
+                    .iter()
+                    .filter(|server| opt_servers.contains(&server.name()))
+                    .collect()
+            });
+
     for target in &config.targets {
         if let Some(target_config_path) = &opt.target_config_path {
             if !is_target_config(&config, target, target_config_path) {
@@ -254,7 +268,7 @@ pub async fn pull(opt: PullOpt) -> Result<()> {
             }
         }
 
-        for (idx, server) in config.remote.servers.iter().enumerate() {
+        for (idx, server) in servers.iter().enumerate() {
             if idx >= 1 && target.shared {
                 continue;
             }
